@@ -6,7 +6,7 @@
 library(softImpute)
 library(tidyverse)
 library(ggplot2)
-setwd("/Users/philipp/Google Drive/Courses/Math 623 Sparsity/project")
+# setwd("/Users/philipp/Google Drive/Courses/Math 623 Sparsity/project")
 
 # Simple SVD
 test <- matrix(1:16, nrow=4)
@@ -46,27 +46,6 @@ data %>% count(userId, movieId) %>% nrow
 data_matrix <- data %>%
 	select(-timestamp) %>%
 	spread(key = movieId, value = rating)
-
-############
-## Soft Imputing Movielens data
-############
-
-x=matrix(rnorm(30),6,5)
-x
-x_orig <- x
-hold_out <- sample(1:30,10,replace=FALSE)
-x[hold_out] <- NA
-x
-
-fit <- softImpute(x,trace=TRUE,type="svd")
-x_complete <- softImpute::complete(x, fit)
-x_complete
-
-sum((x_complete[hold_out] - x_orig[hold_out])^2)/length(hold_out)
-
-
-
-
 
 ############
 ## Soft Imputing Movielens data
