@@ -97,7 +97,9 @@ fit_model <- function(data, frac, lam, comparison){
 		random_fill = c1,
 		average_fill = c2,
 		dist_fill = c3,
-		dist_glob_fill = c4
+		dist_glob_fill = c4,
+		m0d_results = m0d_results,
+		hold_out = hold_out
 	))
 }
 
@@ -165,8 +167,21 @@ legend(
 		2, 5, 4, 3),
 	cex=0.75)
 
+# Extra visualization comparing SVT imputed scores to actual scores
+actual <- data_wide[comparison$hold_out]
+predicted <- comparison$m0d_results
+
+ggplot2::qplot(
+	jitter(actual, 2),
+	jitter(predicted, 2),
+	geom="point", 
+	alpha=I(0.1),
+	xlab = "Actual rating",
+	ylab = "Predicted rating") + theme_bw()
 
 ###############
 # Hold-out fraction selection
 ###############
+
+
 
