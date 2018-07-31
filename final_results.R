@@ -9,7 +9,7 @@
 library(tidyverse)
 library(softImpute)
 source("helper_functions.R")
-
+set.seed(1234)
 
 ###############
 # Load data
@@ -103,10 +103,10 @@ fit_model <- function(data, frac, lam, comparison){
 
 
 ###############
-# Testing different lambda
+# Lambda selection & alternative imputation methods
 ###############
 
-lambda_val <- seq(1, 100, by=5)
+lambda_val <- seq(1, 50, by=1)
 
 mse <- sapply(lambda_val, function(x){
 	print(paste("Loop for lambda =", x))
@@ -117,22 +117,56 @@ mse <- sapply(lambda_val, function(x){
 		comparison = FALSE)
 })
 
-plot(lambda_val, mse[1, ], col="blue")
-lines(lambda_val, mse[2, ], col="blue")
+best_lambda <- lambda_val[which.min(unlist(mse[2,]))]
 
+# Rank of new matrix
+cbind(
+	lambda_val,
+	mse[3, ])
 
-###############
-# Comparing to alternative imputation methods
-###############
-
-best_lambda <- x
+# Alternative imputation at best lambda
+best_lambda <- lambda_val[which.min(unlist(mse[2,]))]
 comparison <- fit_model(
 	data = data_wide, 
 	lam = best_lambda,
 	frac = 0.2,
 	comparison = TRUE)
 
-abline(h = comparison$c1)
-abline(h = comparison$c2)
-abline(h = comparison$c3)
-abline(h = comparison$c4)
+# Plot all
+plot(lambda_val, mse[1, ], 
+		 xlab = expression(paste(lambda)), ylab="MSE", main="Thresholding size selection",
+		 col="blue", type="l", lwd=3, 
+		 ylim=c(1, 5))
+lines(lambda_val, mse[2, ], col="green", lwd=3)
+abline(v=best_lambda, col="green", lty=2)
+abline(h = comparison$random_fill, lty=2, col="black")
+abline(h = comparison$dist_glob_fill, lty=5, col="black")
+abline(h = comparison$dist_fill, lty=4, col="black")
+abline(h = comparison$average_fill, lty=3, col="black")
+
+legend(
+	"topright",
+	legend = c(
+		"SVT algorithm",
+		"SVT algorithm (debiased)",
+		"Random",
+		"Adj random",
+		"Adj random/movie",
+		"Mean/movie"),
+	col = c(
+		"blue",
+		"green",
+		rep("black", 4)),
+	lwd = c(
+		3, 3,
+		1, 1, 1, 1),
+	lty = c(
+		1, 1, 
+		2, 5, 4, 3),
+	cex=0.75)
+
+
+###############
+# Hold-out fraction selection
+###############
+
