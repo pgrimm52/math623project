@@ -183,5 +183,20 @@ ggplot2::qplot(
 # Hold-out fraction selection
 ###############
 
+frac_val <- seq(0.05, 0.4, by=0.05)
 
+mse_frac <- sapply(frac_val, function(x){
+	print(paste("Loop for frac =", x))
+	fit_model(
+		data = data_wide, 
+		lam = 24,
+		frac = x,
+		comparison = FALSE)
+})
 
+plot(frac_val, 
+		 mse_frac[2, ], 
+		 xlab = expression(paste(lambda)), ylab="MSE", 
+		 main="Holdout fraction selection",
+		 col="green", type="l", lwd=3, 
+		 ylim=c(1, 5))
