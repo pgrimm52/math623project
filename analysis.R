@@ -43,55 +43,58 @@ calc_sparsity <- function(mat){
 	return(sum(!is.na(mat))/length(mat))
 }
 
-fix_ratings <- function(mat){
+fix_ratings <- function(vec){
 	# Snaps ratings to 0.5 to 5 (in half unit increments) and fixes extreme values
-	mat <- round(mat/0.5)*0.5
-	mat[mat<0.5] <- 0.5
-	mat[mat>5] <- 5
-	return(mat)
+	vec <- round(vec/0.5)*0.5
+	vec[vec<0.5] <- 0.5
+	vec[vec>5] <- 5
+	return(vec)
 }
 
-holdout_sample <- function(mat, frac){
-	# Samples a fraction of non-missing indices, saves their values, 
-	# and returns matrix without those values
-	non_missing <- which(!is.na(mat))
-	hold_out <- sort(sample(non_missing, size = frac * length(non_missing)))
-	
-	actual_data <- mat[hold_out] 
-	mat[hold_out] <- NA
-	
-	return(list(
-		indices = hold_out, 
-		actual_data = actual_data,
-		new_matrix = mat))
+fill_missing_random <- function(vec){
+	vec[is.na(vec)] <- sample(
+		(1:10)/2, 
+		size = sum(is.na(vec)), 
+		replace = TRUE)
+	return(vec)
 }
 
-fill_missing_values <- function(mat, type){
-	# Fills in missing values based on different logic
-	# 1. Assign random rating
-	if (type == "random"){
-		mat[is.na(mat)] <- sample((1:10)/2, size=sum(is.na(mat)), replace=TRUE)
+fill_missing_average <- function(vec){
+	if (sum(!is.na(vec)) > 0){
+		vec[is.na(vec)] <- mean(vec, na.rm=TRUE)
+	} else {
+		vec[is.na(vec)] <- sample((1:10)/2, 1)
 	}
-	# 2. Assign average non-missing rating for that movie
-	if (type == "average"){
-		mat <- apply(mat, 2, function(x){
-			x[is.na(x)] <- mean(x, na.rm=TRUE)
-			return(fix_ratings(x))
-		})
-		mat[is.na(mat)] <- mean(mat, na.rm=TRUE) # failsafe if there are no entries in a column
-		mat <- fix_ratings(mat)
-	}
-	# 3. Assign movie rating based on overall distribution
-	if (type == "distribution"){
-		mat[is.na(mat)] <- sample(
-			as.numeric(rownames(table(mat))),
-			size = sum(is.na(mat)),
+	return(vec)
+}
+
+fill_missing_distribution <- function(vec){
+	vals <- as.numeric(rownames(table(vec)))
+	probs <- as.numeric(table(vec))
+	if (length(vals) > 1){
+		vec[is.na(vec)] <- sample(
+			vals,
+			size = sum(is.na(vec)),
 			replace = TRUE,
-			prob = table(mat))
+			prob = probs)
+	} else if (length(vals)==1){
+		vec[is.na(vec)] <- vals
+	} else {
+		vec[is.na(vec)] <- sample((1:10)/2, 1)
 	}
-	return(mat)
+	return(vec)
 }
 
+fill_missing_distribution_global <- function(mat){
+	vals <- as.numeric(rownames(table(mat)))
+	probs <- as.numeric(table(mat))
+	mat[is.na(mat)] <- sample(
+		vals, 
+		size = sum(is.na(mat)), 
+		replace = TRUE, 
+		prob = probs)
+	return(mat)
+}
 
 ##############################
 # 3. MATRIX COMPLETION
