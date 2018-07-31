@@ -195,8 +195,7 @@ mse_frac <- sapply(frac_val, function(x){
 })
 
 plot(frac_val, 
-		 mse_frac[2, ], 
-		 xlab = expression(paste(lambda)), ylab="MSE", 
+		 unlist(mse_frac[2, ]), 
+		 xlab = "Holdout fraction", ylab="MSE", 
 		 main="Holdout fraction selection",
-		 col="green", type="l", lwd=3, 
-		 ylim=c(1, 5))
+		 col="green", type="l", lwd=3)
