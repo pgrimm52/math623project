@@ -2,6 +2,7 @@
 
 library(softImpute)
 library(tidyverse)
+source("helper_functions.R")
 
 data <- read.csv("ml-latest-small/ratings.csv", stringsAsFactors = FALSE) %>% 
 	tbl_df()
