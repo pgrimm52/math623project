@@ -1,3 +1,5 @@
+# Helper functions
+
 calc_error <- function(a, b){
 	return(sum((a-b)^2)/length(a))
 }

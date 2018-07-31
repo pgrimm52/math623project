@@ -1,16 +1,16 @@
 # to test out sparse matrix features
 
-library(softImpute)
 library(tidyverse)
+library(softImpute)
 source("helper_functions.R")
 
 data <- read.csv("ml-latest-small/ratings.csv", stringsAsFactors = FALSE) %>% 
 	tbl_df()
 
 data_matrix <- data %>%
-	select(-timestamp) %>%
+	dplyr::select(-timestamp) %>%
 	spread(key = movieId, value = rating) %>%
-	select(-userId) %>%
+	dplyr::select(-userId) %>%
 	as.matrix()
 
 # use pre-baked scripts
@@ -32,8 +32,10 @@ fit_model <- function(data, frac, lam, comparison){
 	
 	fit <- softImpute(
 		data_sparse, 
-		rank.max=50, lambda=lam, 
+		rank.max=25, lambda=lam, 
 		maxit=200, trace.it=TRUE, type="svd")
+	
+	fit_debias <- deBias(data_sparse, fit)
 	
 	m0_results <- fix_ratings(
 		impute(
@@ -41,7 +43,15 @@ fit_model <- function(data, frac, lam, comparison){
 			i = hold_out_i,
 			j = hold_out_j))
 	
-	c0 <- calc_error(real_values, m0_results) 
+	c0 <- calc_error(real_values, m0_results)
+	
+	m0d_results <- fix_ratings(
+		impute(
+			fit_debias,
+			i = hold_out_i,
+			j = hold_out_j))
+	
+	c0d <- calc_error(real_values, m0d_results) 
 	
 	# IF REQUESTED: compare to other methods
 	c1 <- NA; c2 <- NA; c3 <- NA; c4 <- NA
@@ -68,6 +78,7 @@ fit_model <- function(data, frac, lam, comparison){
 	# Return results
 	return(list(
 		matrix_completion = c0,
+		matrix_completion_debias = c0d,
 		random_fill = c1,
 		average_fill = c2,
 		dist_fill = c3,
@@ -78,15 +89,16 @@ fit_model <- function(data, frac, lam, comparison){
 fit_model(
 	data = data_matrix, 
 	lam = 10,
-	frac = 0.1,
-	comparison = FALSE)
+	frac = 0.2,
+	comparison = TRUE)
 
-lambda_val <- seq(1, 500, by=5)
-sapply(lambda_val, function(x){
+lambda_val <- seq(1, 100, by=10)
+mse <- sapply(lambda_val, function(x){
 	fit_model(
 		data = data_matrix, 
 		lam = x,
 		frac = 0.2,
 		comparison = FALSE)
 })
+
 
