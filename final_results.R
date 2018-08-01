@@ -6,6 +6,9 @@
 # Load packages/functions
 ###############
 
+library(caret)
+library(RColorBrewer)
+library(gridExtra)
 library(tidyverse)
 library(softImpute)
 source("helper_functions.R")
@@ -46,8 +49,8 @@ fit_model <- function(data, frac, lam, comparison){
 	
 	fit <- softImpute(
 		data_sparse, 
-		rank.max=25, lambda=lam, 
-		maxit=200, trace.it=FALSE, type="svd")
+		rank.max=50, lambda=lam, 
+		maxit=200, trace.it=TRUE, type="svd")
 	
 	fit_debias <- deBias(data_sparse, fit)
 	
@@ -103,12 +106,39 @@ fit_model <- function(data, frac, lam, comparison){
 	))
 }
 
+fit_model_simple <- function(data, holdout_indices, lam, rank.max){
+	
+	data_train <- data
+	data_train[holdout_indices] <- NA
+	
+	data_sparse <- as(data_train, "Incomplete")
+	
+	fit <- softImpute(
+		data_sparse, 
+		rank.max=rank.max, lambda=lam, 
+		maxit=200, trace.it=FALSE, type="svd")
+	
+	fit <- deBias(data_sparse, fit)
+	
+	predicted <- fix_ratings(
+		impute(
+			fit,
+			i = arrayInd(holdout_indices, dim(data))[, 1],
+			j = arrayInd(holdout_indices, dim(data))[, 2]))
+	
+	return(list(
+		fit_object = fit,
+		predicted = predicted,
+		actual = data[holdout_indices]
+	))
+}
+
 
 ###############
 # Lambda selection & alternative imputation methods
 ###############
 
-lambda_val <- seq(1, 50, by=1)
+lambda_val <- seq(1, 50, by=2)
 
 mse <- sapply(lambda_val, function(x){
 	print(paste("Loop for lambda =", x))
@@ -127,7 +157,6 @@ cbind(
 	mse[3, ])
 
 # Alternative imputation at best lambda
-best_lambda <- lambda_val[which.min(unlist(mse[2,]))]
 comparison <- fit_model(
 	data = data_wide, 
 	lam = best_lambda,
@@ -135,6 +164,7 @@ comparison <- fit_model(
 	comparison = TRUE)
 
 # Plot all
+png('Threshold_size.png')
 plot(lambda_val, mse[1, ], 
 		 xlab = expression(paste(lambda)), ylab="MSE", main="Thresholding size selection",
 		 col="blue", type="l", lwd=3, 
@@ -166,11 +196,13 @@ legend(
 		1, 1, 
 		2, 5, 4, 3),
 	cex=0.75)
+dev.off()
 
 # Extra visualization comparing SVT imputed scores to actual scores
 actual <- data_wide[comparison$hold_out]
 predicted <- comparison$m0d_results
 
+png("Actual_vs_predicted.png")
 ggplot2::qplot(
 	jitter(actual, 2),
 	jitter(predicted, 2),
@@ -178,6 +210,7 @@ ggplot2::qplot(
 	alpha=I(0.1),
 	xlab = "Actual rating",
 	ylab = "Predicted rating") + theme_bw()
+dev.off()
 
 ###############
 # Hold-out fraction selection
@@ -189,13 +222,117 @@ mse_frac <- sapply(frac_val, function(x){
 	print(paste("Loop for frac =", x))
 	fit_model(
 		data = data_wide, 
-		lam = 24,
+		lam = best_lambda,
 		frac = x,
 		comparison = FALSE)
 })
 
+png("Best_holdout_size.png")
 plot(frac_val, 
 		 unlist(mse_frac[2, ]), 
 		 xlab = "Holdout fraction", ylab="MSE", 
 		 main="Holdout fraction selection",
 		 col="green", type="l", lwd=3)
+dev.off()
+
+###############
+# Create confusion matrix
+###############
+
+test_fit <- fit_model(
+		data = data_wide, 
+		lam = best_lambda,
+		frac = 0.2,
+		comparison = FALSE)
+
+data_damaged <- data_wide
+data_damaged[test_fit$hold_out] <- NA
+
+m1 <- apply(data_damaged, 2, fill_missing_random) %>% fix_ratings
+m2 <- apply(data_damaged, 2, fill_missing_average) %>% fix_ratings
+m3 <- apply(data_damaged, 2, fill_missing_distribution) %>% fix_ratings
+m4 <- fill_missing_distribution_global(data_damaged) %>% fix_ratings
+
+generate_heatmap <- function(cfm){
+	# Generates heatmap from caret::confusionMatrix object
+	
+	# Grab table & convert to proportion
+	cfm_prop <- apply(cfm$table, 2, function(x){x/sum(x)})
+	# Melt to long form
+	ggdata <- reshape2::melt(cfm_prop)
+	# Plot heatmap
+	ggplot(data = ggdata,
+			 aes(x = Reference, y = Prediction, fill = value)) +
+	geom_tile() +
+	coord_equal() +
+	scale_fill_gradientn(
+		colours = colorRampPalette(brewer.pal(6, "YlOrRd"))(6), 
+		limits = c(0, .4),
+		na.value = "#FFFFB2") +
+	theme_classic()
+}
+
+calc_accuracy_expanded <- function(cfm){
+	# Expanded accuracy measure (within 0.5 points)
+	d <- seq(12, 89, by=11)
+	i <- c(1, 2, d, d-1, d+1, 99, 100)
+	return(
+		sum(cfm$table[i])/sum(cfm$table))}
+
+reference <- factor(data_wide[test_fit$hold_out])
+cfm1 <- confusionMatrix(
+	factor(test_fit$m0d_results),
+	reference)
+cfm2 <- confusionMatrix(
+	factor(m1[test_fit$hold_out]),
+	reference)
+cfm3 <- confusionMatrix(
+	factor(m2[test_fit$hold_out]),
+	reference)
+cfm4 <- confusionMatrix(
+	factor(m3[test_fit$hold_out]),
+	reference)
+cfm5 <- confusionMatrix(
+	factor(m4[test_fit$hold_out]),
+	reference)
+
+cfm1 %>% calc_accuracy_expanded()
+cfm2 %>% calc_accuracy_expanded()
+cfm3 %>% calc_accuracy_expanded()
+cfm4 %>% calc_accuracy_expanded()
+cfm5 %>% calc_accuracy_expanded()
+
+png("Heatmap_grid.png")
+grid.arrange(
+	cfm1 %>% generate_heatmap(),
+ 	cfm2 %>% generate_heatmap(),
+ 	cfm3 %>% generate_heatmap(),
+ 	cfm4 %>% generate_heatmap(),
+ 	cfm5 %>% generate_heatmap(),
+	nrow=5, ncol=1)
+dev.off()
+
+###############
+# Alternative sampling strategies
+###############
+
+# STILL TO BE FLESHED OUT
+
+oversample_holdout_indices <- function(data, frac){
+	# Returns a list of indices to be held out for testing,
+	# oversamples less prolific viewers
+	weights <- 1/rowSums(!is.na(data), na.rm=TRUE)
+	weights[weights == 1] <- 0
+	
+	sampling_matrix <- cbind(
+		index = which(!is.na(data), arr.ind=FALSE),
+		which(!is.na(data), arr.ind=TRUE),
+		weights = weights[which(!is.na(data), arr.ind=TRUE)[, 1]])
+	
+	holdout <- sample(
+		x = sampling_matrix[, 1],
+		size = frac * length(sampling_matrix[, "index"]),
+		prob = sampling_matrix[, "weights"])
+	
+	return(as.vector(sort(holdout)))
+}

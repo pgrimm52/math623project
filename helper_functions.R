@@ -61,3 +61,21 @@ fill_missing_distribution_global <- function(mat){
 		prob = probs)
 	return(mat)
 }
+
+gen_holdout_indices <- function(data, frac){
+	# Returns a list of indices to be held out for testing
+	sampling_matrix <- cbind(
+		index = which(!is.na(data), arr.ind=FALSE),
+		which(!is.na(data), arr.ind=TRUE))
+	
+	holdout <- sample(
+		x = sampling_matrix[, "index"],
+		size = frac * length(sampling_matrix[, "index"]))
+	
+	# TO BE IMPLEMENTED: code to exclude indices that would trigger empty rows
+	# data[holdout] <- NA
+	# bad_rows <- which(rowSums(data, na.rm=TRUE) == 0)
+	# s <- sampling_matrix[holdout & , "index"]
+		
+	return(as.vector(sort(holdout)))
+}
