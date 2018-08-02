@@ -403,7 +403,7 @@ fit <- fit_model_simple(
 	data = data_wide,
 	holdout_indices = ho,
 	lam = 19,
-	rank.max = 2)
+	rank.max = 50)
 
 confusionMatrix(
 	factor(fit$predicted),
@@ -455,27 +455,33 @@ ggplot(data=user_characteristics,
 			 aes(x=movies_seen, y=avg_rating, color=high_success)) +
 	geom_point(alpha=0.5) +
 	xlim(c(20, 120))
+ggsave("User-1.png")
 
 ggplot(data=user_characteristics,
 			 aes(x=mainstream_viewer, y=avg_rating, color=high_success)) +
 	geom_point(alpha=0.5)
+gsave("User-2.png")
 
 ggplot(data=user_characteristics,
 			 aes(x=mainstream_viewer, y=movies_seen, color=high_success)) +
 	geom_point(alpha=0.5) +
 	ylim(c(0,500))
+gsave("User-3.png")
 
 ggplot(data=user_characteristics,
 			 aes(x=mainstream_viewer, fill=high_success)) +
 	geom_density(alpha=0.5, position="identity")
+gsave("User-4.png")
 
 ggplot(data=user_characteristics,
 			 aes(x=avg_rating, fill=high_success)) +
 	geom_histogram(alpha=0.5, position="identity")
+gsave("User-5.png")
 
 ggplot(data=user_characteristics,
 			 aes(x=movies_seen, fill=high_success)) +
 	geom_histogram(alpha=0.5, position="identity")
+gsave("User-6.png")
 
 
 ###############
