@@ -418,6 +418,9 @@ ho_results <- data.frame(
 	Success_narrow = (fit$predicted == fit$actual),
 	Success_expanded = (abs(fit$predicted-fit$actual)<0.51))
 
+# temp fix
+ho_results <- ho_results %>% rbind(c(100, 0, 0))
+
 ho_results <- ho_results %>%
 	group_by(user) %>%
 	summarize(
@@ -432,7 +435,7 @@ ggplot(data=(ho_results %>% gather(type, value, -user)),
 	xlab("Successful prediction rate for user") +
 	ylab("Density") +
 	ggtitle("Distribution of Prediction Performance Across Users")
-ggsave("User performance distribution.png", width = 7, height = 8)
+ggsave("User performance distribution.png")
 
 # Examine users (no good trends emerge)
 
@@ -460,28 +463,28 @@ ggsave("User-1.png")
 ggplot(data=user_characteristics,
 			 aes(x=mainstream_viewer, y=avg_rating, color=high_success)) +
 	geom_point(alpha=0.5)
-gsave("User-2.png")
+ggsave("User-2.png")
 
 ggplot(data=user_characteristics,
 			 aes(x=mainstream_viewer, y=movies_seen, color=high_success)) +
 	geom_point(alpha=0.5) +
 	ylim(c(0,500))
-gsave("User-3.png")
+ggsave("User-3.png")
 
 ggplot(data=user_characteristics,
 			 aes(x=mainstream_viewer, fill=high_success)) +
 	geom_density(alpha=0.5, position="identity")
-gsave("User-4.png")
+ggsave("User-4.png")
 
 ggplot(data=user_characteristics,
 			 aes(x=avg_rating, fill=high_success)) +
 	geom_histogram(alpha=0.5, position="identity")
-gsave("User-5.png")
+ggsave("User-5.png")
 
 ggplot(data=user_characteristics,
 			 aes(x=movies_seen, fill=high_success)) +
 	geom_histogram(alpha=0.5, position="identity")
-gsave("User-6.png")
+ggsave("User-6.png")
 
 
 ###############
