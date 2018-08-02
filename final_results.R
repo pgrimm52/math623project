@@ -116,7 +116,7 @@ fit_model_simple <- function(data, holdout_indices, lam, rank.max){
 	fit <- softImpute(
 		data_sparse, 
 		rank.max=rank.max, lambda=lam, 
-		maxit=200, trace.it=FALSE, type="svd")
+		maxit=200, trace.it=TRUE, type="svd")
 	
 	fit <- deBias(data_sparse, fit)
 	
@@ -212,6 +212,7 @@ ggplot2::qplot(
 	ylab = "Predicted rating") + theme_bw()
 dev.off()
 
+
 ###############
 # Hold-out fraction selection
 ###############
@@ -234,6 +235,7 @@ plot(frac_val,
 		 main="Holdout fraction selection",
 		 col="green", type="l", lwd=3)
 dev.off()
+
 
 ###############
 # Create confusion matrix
@@ -312,27 +314,195 @@ grid.arrange(
 	nrow=5, ncol=1)
 dev.off()
 
+
 ###############
 # Alternative sampling strategies
 ###############
 
 # STILL TO BE FLESHED OUT
 
-oversample_holdout_indices <- function(data, frac){
-	# Returns a list of indices to be held out for testing,
-	# oversamples less prolific viewers
-	weights <- 1/rowSums(!is.na(data), na.rm=TRUE)
-	weights[weights == 1] <- 0
+# oversample_holdout_indices <- function(data, frac){
+# 	# Returns a list of indices to be held out for testing,
+# 	# oversamples less prolific viewers
+# 	weights <- 1/rowSums(!is.na(data), na.rm=TRUE)
+# 	weights[weights == 1] <- 0
+# 	
+# 	sampling_matrix <- cbind(
+# 		index = which(!is.na(data), arr.ind=FALSE),
+# 		which(!is.na(data), arr.ind=TRUE),
+# 		weights = weights[which(!is.na(data), arr.ind=TRUE)[, 1]])
+# 	
+# 	holdout <- sample(
+# 		x = sampling_matrix[, 1],
+# 		size = frac * length(sampling_matrix[, "index"]),
+# 		prob = sampling_matrix[, "weights"])
+# 	
+# 	return(as.vector(sort(holdout)))
+# }
+
+
+###############
+# More confusion matrix stuff
+###############
+
+rate <- 1 # which cfm metric to plot (here: sensitivity)
+
+# Construct necessary dataset
+Rate <- rbind(
+  cfm1$byClass[,rate],
+	cfm2$byClass[,rate],
+	cfm3$byClass[,rate],
+	cfm4$byClass[,rate],
+	cfm5$byClass[,rate])
+
+Prevalence <- rbind(
+	cfm1$byClass[,8],
+	cfm2$byClass[,8],
+	cfm3$byClass[,8],
+	cfm4$byClass[,8],
+	cfm5$byClass[,8])
+reshape2::melt(Prevalence)
+
+ggdata <- cbind(
+	reshape2::melt(Rate),
+	Prevalence = reshape2::melt(Prevalence)[,3])
+
+# Give better labels
+ggdata$Var1 <- factor(ggdata$Var1)
+levels(ggdata$Var1) <- c(
+	"SVT algorithm",
+	"Random",
+	"Adj random",
+	"Adj random/movie",
+	"Mean/movie")
+levels(ggdata$Var2) <- gsub("Class: ", "", levels(ggdata$Var2))
+
+# Plot and save
+ggplot(data=ggdata,
+			 aes(x = Var2, y = value, fill=Prevalence)) +
+	geom_bar(stat="identity", color="black") +
+	scale_fill_gradient(low = "white", high="red") +
+	facet_grid(Var1 ~ .) +
+	theme_classic() +
+	xlab("Movie rating") +
+	ylab("Sensitivity") +
+	ggtitle("Sensitivity by Imputation/Rating\n(color denotes frequency)")
+ggsave("Sensitivity.png", width = 7, height = 8)
+
+
+###############
+# Explore users
+###############
+
+# Generate data
+ho <- gen_holdout_indices(
+	data = data_wide,
+	frac = 0.2)
+
+fit <- fit_model_simple(
+	data = data_wide,
+	holdout_indices = ho,
+	lam = 19,
+	rank.max = 2)
+
+confusionMatrix(
+	factor(fit$predicted),
+	factor(fit$actual))
+
+# Plot results (distribution of users' narrow vs. expanded success rates)
+ho_results <- data.frame(
+	user = arrayInd(ho, dim(data_wide))[,1],
+	movie = arrayInd(ho, dim(data_wide))[,2],
+	fit$predicted,
+	fit$actual,
+	Success_narrow = (fit$predicted == fit$actual),
+	Success_expanded = (abs(fit$predicted-fit$actual)<0.51))
+
+ho_results <- ho_results %>%
+	group_by(user) %>%
+	summarize(
+		Success_narrow = mean(Success_narrow),
+		Success_expanded = mean(Success_expanded))
+
+ggplot(data=(ho_results %>% gather(type, value, -user)),
+			 aes(x=value, fill=type)) +
+	geom_histogram(alpha=0.5, position="identity") + 
+	scale_fill_manual(values=c("#1f78b4", "#33a02c")) + 
+	theme_classic() +
+	xlab("Successful prediction rate for user") +
+	ylab("Density") +
+	ggtitle("Distribution of Prediction Performance Across Users")
+ggsave("User performance distribution.png", width = 7, height = 8)
+
+# Examine users (no good trends emerge)
+
+popularity_criterion <- 50
+
+popular_movies_seen <- rowSums(!is.na(data_wide[, colSums(!is.na(data_wide), na.rm=TRUE)>popularity_criterion]), na.rm=TRUE)
+movies_seen <- rowSums(!is.na(data_wide), na.rm=TRUE)
+mainstream_viewer <- popular_movies_seen / movies_seen
+
+user_characteristics <- data.frame(
+	user = 1:nrow(data_wide),
+	movies_seen = movies_seen,
+	avg_rating = rowMeans(data_wide, na.rm=TRUE),
+	mainstream_viewer = mainstream_viewer,
+	high_success = (ho_results$Success_expanded>0.5))
+
+summary(user_characteristics)
+
+ggplot(data=user_characteristics,
+			 aes(x=movies_seen, y=avg_rating, color=high_success)) +
+	geom_point(alpha=0.5) +
+	xlim(c(20, 120))
+
+ggplot(data=user_characteristics,
+			 aes(x=mainstream_viewer, y=avg_rating, color=high_success)) +
+	geom_point(alpha=0.5)
+
+ggplot(data=user_characteristics,
+			 aes(x=mainstream_viewer, y=movies_seen, color=high_success)) +
+	geom_point(alpha=0.5) +
+	ylim(c(0,500))
+
+ggplot(data=user_characteristics,
+			 aes(x=mainstream_viewer, fill=high_success)) +
+	geom_density(alpha=0.5, position="identity")
+
+ggplot(data=user_characteristics,
+			 aes(x=avg_rating, fill=high_success)) +
+	geom_histogram(alpha=0.5, position="identity")
+
+ggplot(data=user_characteristics,
+			 aes(x=movies_seen, fill=high_success)) +
+	geom_histogram(alpha=0.5, position="identity")
+
+
+###############
+# Tune lambda to accuracy
+###############
+
+ho <- gen_holdout_indices(
+	data = data_wide,
+	frac = 0.2)
+
+lambda_val <- seq(1, 50, by=2)
+
+tune_lam_accuracy <- sapply(lambda_val, function(x){
+	fit <- fit_model_simple(
+		data = data_wide,
+		holdout_indices = ho,
+		lam = x,
+		rank.max = 50)
 	
-	sampling_matrix <- cbind(
-		index = which(!is.na(data), arr.ind=FALSE),
-		which(!is.na(data), arr.ind=TRUE),
-		weights = weights[which(!is.na(data), arr.ind=TRUE)[, 1]])
-	
-	holdout <- sample(
-		x = sampling_matrix[, 1],
-		size = frac * length(sampling_matrix[, "index"]),
-		prob = sampling_matrix[, "weights"])
-	
-	return(as.vector(sort(holdout)))
-}
+	return(confusionMatrix(
+		factor(fit$predicted),
+		factor(fit$actual))$overall["Accuracy"])
+})
+
+# Plot all
+png('Threshold_size_accuracy.png')
+plot(lambda_val, tune_lam_accuracy, 
+		 xlab = expression(paste(lambda)), ylab="Accuracy", main="Thresholding size selection",
+		 col="blue", type="l", lwd=3)
+dev.off()
