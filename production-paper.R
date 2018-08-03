@@ -5,7 +5,8 @@
 
 ## 1.0 Load packages/functions ####################
 
-# rm(list=ls())
+rm(list=ls())
+
 library(caret)
 library(RColorBrewer)
 library(gridExtra)
