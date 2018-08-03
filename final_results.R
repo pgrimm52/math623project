@@ -11,6 +11,7 @@ library(RColorBrewer)
 library(gridExtra)
 library(tidyverse)
 library(softImpute)
+library(lubridate)
 source("helper_functions.R")
 set.seed(1234)
 
@@ -20,6 +21,8 @@ set.seed(1234)
 
 data_long <- read.csv("ml-latest-small/ratings.csv", stringsAsFactors = FALSE) %>% 
 	tbl_df() %>%
+	mutate(timestamp = as_datetime(timestamp)) %>%
+	filter(timestamp > ymd("2003-05-16")) %>%
 	dplyr::select(-timestamp)
 
 data_wide <- data_long %>%
@@ -485,6 +488,12 @@ ggplot(data=user_characteristics,
 			 aes(x=movies_seen, fill=high_success)) +
 	geom_histogram(alpha=0.5, position="identity")
 ggsave("User-6.png")
+
+ggplot(data=user_characteristics,
+			 aes(x=movies_seen, fill=high_success)) +
+	geom_density(alpha=0.5, position="identity") +
+	xlim(c(0,750))
+ggsave("User-7.png")
 
 
 ###############
