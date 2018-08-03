@@ -14,7 +14,7 @@ setwd("C:/Users/mpeng/Documents/Mary/Georgetown/Math 623 - Sparse Sampling/Final
 ratings_raw <- read.csv('ratings.csv', header = TRUE) %>%
                 data.frame()
 
-reshaped_ratings <- ratings_frame %>%
+reshaped_ratings <- ratings_raw %>%
   select(-4) %>%
   spread(data=., key = movieId, value = rating)
 
@@ -25,8 +25,7 @@ movies_data <- read.csv('movies.csv', header = TRUE) %>%
 #######################################
 #Figure 1: Distribution of # of Ratings by Movie
 #######################################
-number_of_ratings_by_movie <- sapply(X = reshaped_ratings[,-1], FUN = function(x) sum(!is.na(x))) %>%
-                              data.frame(movieId = as.numeric(rownames(as.matrix(.))), n = .)
+number_of_ratings_by_movie <- sapply(X = reshaped_ratings[,-1], FUN = function(x) sum(!is.na(x)))
 
 #Phil to regenerate using ggplot
 hist(number_of_ratings_by_movie[,2],plot=TRUE,breaks=50, xlim = c(0,340), ylim = c(0,6000),col='green', 
