@@ -4,6 +4,21 @@ calc_error <- function(a, b){
 	return(sum((a-b)^2)/length(a))
 }
 
+calc_mse <- function(a, b){
+	return(mean((a-b)^2))
+}
+
+calc_acc <- function(a, b){
+	return(mean(a == b))
+}
+
+calc_accuracy_expanded <- function(cfm){
+	# Expanded accuracy measure (within 0.5 points)
+	d <- seq(12, 89, by=11)
+	i <- c(1, 2, d, d-1, d+1, 99, 100)
+	return(
+		sum(cfm$table[i])/sum(cfm$table))}
+
 calc_sparsity <- function(mat){
 	# Provides fraction of non-missing values
 	return(sum(!is.na(mat))/length(mat))
@@ -72,10 +87,5 @@ gen_holdout_indices <- function(data, frac){
 		x = sampling_matrix[, "index"],
 		size = frac * length(sampling_matrix[, "index"]))
 	
-	# TO BE IMPLEMENTED: code to exclude indices that would trigger empty rows
-	# data[holdout] <- NA
-	# bad_rows <- which(rowSums(data, na.rm=TRUE) == 0)
-	# s <- sampling_matrix[holdout & , "index"]
-		
 	return(as.vector(sort(holdout)))
 }
