@@ -391,12 +391,14 @@ user_data <- user_data %>%
 ggplot(data=(user_data %>% gather(type, value, -user)),
 			 aes(x=value, fill=type)) +
 	geom_histogram(alpha=0.5, position="identity") + 
-	scale_fill_manual(values=c("#1f78b4", "#33a02c")) + 
+	scale_fill_manual(
+		"Success criterion",
+		values=c("#1f78b4", "#33a02c"), 
+		labels=c("Expanded (+/- 0.5)", "Narrow (exact)")) + 
 	theme_classic() +
-	scale_fill_discrete("Success criterion", labels=c("Expanded (+/- 0.5)", "Narrow (exact)")) +
 	xlab("Accuracy") +
 	ylab("Count")
-ggsave("figures/Figure_E.png")
+ggsave("figures/Figure_E.png", height=4, width=6, units='in', dpi=600)
 
 # Examine users (no good trends emerge) & plot
 
@@ -417,12 +419,23 @@ summary(user_characteristics)
 
 ggplot(data=user_characteristics,
 			 aes(x=mainstream_viewer, fill=high_success)) +
-	geom_density(alpha=0.5, position="identity")
-ggsave("figures/Figure_F.png")
+	geom_density(alpha=0.5, position="identity") +
+	scale_fill_manual(
+		"User accuracy high (>0.5)?",
+		values=c("#FF8C00", "#1E90FF"), 
+		labels=c("FALSE", "TRUE")) +
+	theme_classic() +
+	xlab("Prop of mainstream movies in user's history")
+ggsave("figures/Figure_F.png", height=4, width=6, units='in', dpi=600)
 
 ggplot(data=user_characteristics,
 			 aes(x=movies_seen, fill=high_success)) +
 	geom_density(alpha=0.5, position="identity") +
-	xlim(c(0,750))
-ggsave("figures/Figure_G.png")
-
+	xlim(c(0,600)) +
+	scale_fill_manual(
+		"User accuracy high (>0.5)?",
+		values=c("#FF8C00", "#1E90FF"), 
+		labels=c("FALSE", "TRUE")) +
+	theme_classic() +
+	xlab("Movies seen (by user)")
+ggsave("figures/Figure_G.png", height=4, width=6, units='in', dpi=600)

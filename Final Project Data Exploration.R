@@ -122,7 +122,7 @@ ggdata2 <- ratings_small %>%
 	count(movieId)
 
 ggplot(data = ggdata2, aes(x = n)) +
-	geom_histogram(color="black") +
+	geom_histogram(color="gray") +
 	theme_classic() +
 	xlab("Ratings per movie \n(axis truncated due to long tail)") + 
 	ylab("Count") +

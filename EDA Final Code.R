@@ -19,7 +19,7 @@ ratings_raw <- read.csv('ratings.csv', header = TRUE) %>%
 ratings_small <- ratings_raw %>%
 	tbl_df() %>%
 	mutate(timestamp = as_datetime(timestamp)) %>%
-	filter(timestamp > ymd("2003-05-16")) %>% # because of data availability issue
+	# filter(timestamp > ymd("2003-05-16")) %>% # because of data availability issue
 	dplyr::select(-timestamp)
 
 reshaped_ratings <- ratings_raw %>%
@@ -32,6 +32,8 @@ movies_data <- read.csv('movies.csv', header = TRUE) %>%
 
 movies <- read.csv("movies.csv") %>% tbl_df()
 
+setwd("/Users/philipp/Google Drive/Courses/Math 623 Sparsity/project/figures/")
+
 #######################################
 #Figure 1: Distribution of # of Ratings by Movie
 #######################################
@@ -42,11 +44,15 @@ number_of_ratings_by_movie <- sapply(X = reshaped_ratings[,-1], FUN = function(x
 #      main='Figure 1: Number of Ratings/Movie',
 #      xlab = 'Number of Ratings', ylab = 'Number of Movies')
 
-ggplot(data = ratings_small, aes(x = rating)) +
-	geom_histogram(bins = 10, color="black", fill="gray") +
+ggdata2 <- ratings_small %>%
+	count(movieId)
+
+ggplot(data = ggdata2, aes(x = n)) +
+	geom_histogram(fill="gray", color="black") +
 	theme_classic() +
-	xlab("Ratings") + 
-	ylab("Count") +
+	xlab("Ratings per movie \n(axis truncated due to long tail)") + 
+	ylab("Number of movies") +
+	xlim(c(0, 30)) + 
 	theme(axis.text=element_text(size=10))
 ggsave("EDA_Figure_1.png")
 
@@ -95,12 +101,9 @@ ggsave("EDA_Figure_3.png")
 ###########################################
 #Figure 4: Distribution of Ratings by time
 ###########################################
-data_long <- read.csv("ratings.csv", stringsAsFactors = FALSE) %>% 
-  tbl_df() %>%
-  mutate(timestamp = as_datetime(timestamp)) 
-	# %>% filter(timestamp > ymd("2003-05-16"))
+data_long <- ratings_raw
 
-ggplot(data=data_long, aes(x=timestamp, y=factor(rating))) +
+ggplot(data=data_long, aes(x=as_datetime(timestamp), y=factor(rating))) +
 	geom_point(alpha = 0.05) + 
 	geom_jitter() + 
 	theme_classic() +
@@ -145,3 +148,19 @@ ggplot(data = ggdata1, aes(x = reorder(genres, n), y = n)) +
 	theme_classic() +
 	theme(axis.text=element_text(size=10))
 ggsave("EDA_Figure_5.png")
+
+# Tagging graph
+tags <- read.csv("ml-latest-small/tags.csv") %>% tbl_df()
+
+ggdata <- tags %>%
+	count(userId) %>%
+	arrange(desc(n))
+
+ggplot(data=ggdata, aes(x=reorder(userId, desc(n)), y=n)) +
+	geom_bar(stat="identity") +
+	xlab("Individual users, sorted by number of tags \n(Non-tagging users omitted)") +
+	ylab("Number of tags") +
+	theme_classic() +
+	theme(axis.text=element_text(size=10),
+				axis.text.x=element_blank())
+ggsave("EDA_Figure_6.png")

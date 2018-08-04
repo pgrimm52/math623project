@@ -6,7 +6,7 @@
 library(softImpute)
 library(tidyverse)
 library(ggplot2)
-# setwd("/Users/philipp/Google Drive/Courses/Math 623 Sparsity/project")
+setwd("/Users/philipp/Google Drive/Courses/Math 623 Sparsity/project")
 
 # Simple SVD
 test <- matrix(1:16, nrow=4)
