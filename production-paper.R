@@ -15,7 +15,7 @@ library(lubridate)
 library(softImpute)
 source("helper_functions.R")
 set.seed(1234)
-
+ 
 
 ## 2.0 Load data ##########################
 
@@ -26,7 +26,7 @@ tags <- read.csv("ml-latest-small/tags.csv") %>% tbl_df()
 
 data_long <- ratings %>%
 	mutate(timestamp = as_datetime(timestamp)) %>%
-	filter(timestamp > ymd("2003-05-16")) %>% # because of data availability issue
+	# filter(timestamp > ymd("2003-05-16")) %>% # because of data availability issue
 	dplyr::select(-timestamp)
 
 data_wide <- data_long %>%
@@ -151,10 +151,10 @@ plot(lambda_tune, mse_tune,
 		 ylim=c(1, 5))
 lines(lambda_tune, mse_tune_debias, col="blue", lwd=3)
 abline(v = lambda_best_debias, col="blue", lty=2)
-abline(h = c1, lwd = 2, lty=2, col="black")
-abline(h = c4, lwd = 2, lty=5, col="black")
-abline(h = c3, lwd = 2, lty=4, col="black")
-abline(h = c2, lwd = 2, lty=3, col="black")
+abline(h = c1, lwd = 1.5, lty=2, col="black")
+abline(h = c4, lwd = 1.5, lty=5, col="black")
+abline(h = c3, lwd = 1.5, lty=4, col="brown")
+abline(h = c2, lwd = 1.5, lty=3, col="brown")
 
 legend(
 	"topright",
@@ -164,14 +164,14 @@ legend(
 		"Random",
 		"Emp random",
 		"Emp random (movie)",
-		"Average"),
+		"Average (movie)"),
 	col = c(
 		"green",
 		"blue",
-		rep("black", 4)),
+		"black", "black", "brown", "brown"), 
 	lwd = c(
 		3, 3,
-		2, 2, 2, 2),
+		1.5, 1.5, 1.5, 1.5),
 	lty = c(
 		1, 1, 
 		2, 5, 4, 3),
@@ -199,13 +199,7 @@ acc_tune_debias <- sapply(lambda_tune, function(lam){
 }
 )
 
-lambda_best_debias_acc <- lambda_tune[which.min(acc_tune_debias)]
-
-png("figures/Figure_B.png")
-plot(lambda_tune, acc_tune_debias, 
-		 xlab = expression(paste(lambda)), ylab="Accuracy",
-		 col="blue", type="l", lwd=3)
-dev.off()
+lambda_best_debias_acc <- lambda_tune[which.max(acc_tune_debias)]
 
 ## 5.2 Confusion matrices ##################
 
@@ -231,11 +225,57 @@ cfm5 <- confusionMatrix(
 	factor(fit_acc$predicted),
 	factor(data_wide[holdout]))
 
-cfm1
-cfm2
-cfm3
-cfm4
-cfm5
+png("figures/Figure_B.png")
+plot(lambda_tune, acc_tune_debias, 
+		 xlab = expression(paste(lambda)), ylab="Accuracy",
+		 col="blue", type="l", lwd=3,
+		 ylim=c(0.05, 0.25))
+abline(v = lambda_best_debias_acc, col="blue", lty=2)
+abline(h = cfm1$overall["Accuracy"], lwd = 1.5, lty=2, col="black")
+abline(h = cfm4$overall["Accuracy"], lwd = 1.5, lty=5, col="black")
+abline(h = cfm3$overall["Accuracy"], lwd = 1.5, lty=4, col="brown")
+abline(h = cfm2$overall["Accuracy"], lwd = 1.5, lty=3, col="brown")
+legend(
+	"topright",
+	legend = c(
+		"SVT (debiased)",
+		"Random",
+		"Emp random",
+		"Emp random (movie)",
+		"Average (movie)"),
+	col = c(
+		"blue",
+		"black", "black", "brown", "brown"), 
+	lwd = c(
+		3,
+		1.5, 1.5, 1.5, 1.5),
+	lty = c(
+		1, 
+		2, 5, 4, 3),
+	cex=0.75)
+dev.off()
+
+cfm1$overall["Accuracy"]
+cfm2$overall["Accuracy"]
+cfm3$overall["Accuracy"]
+cfm4$overall["Accuracy"]
+cfm5$overall["Accuracy"]
+
+# > cfm1$overall["Accuracy"]
+# Accuracy 
+# 0.09995 
+# > cfm2$overall["Accuracy"]
+# Accuracy 
+# 0.2224 
+# > cfm3$overall["Accuracy"]
+# Accuracy 
+# 0.20565 
+# > cfm4$overall["Accuracy"]
+# Accuracy 
+# 0.1745 
+# > cfm5$overall["Accuracy"]
+# Accuracy 
+# 0.1908 
 
 cfm1 %>% calc_accuracy_expanded()
 cfm2 %>% calc_accuracy_expanded()
@@ -243,13 +283,23 @@ cfm3 %>% calc_accuracy_expanded()
 cfm4 %>% calc_accuracy_expanded()
 cfm5 %>% calc_accuracy_expanded() # matrix completion
 
+# > cfm1 %>% calc_accuracy_expanded()
+# [1] 0.286
+# > cfm2 %>% calc_accuracy_expanded()
+# [1] 0.54855
+# > cfm3 %>% calc_accuracy_expanded()
+# [1] 0.4092
+# > cfm4 %>% calc_accuracy_expanded()
+# [1] 0.3744
+# > cfm5 %>% calc_accuracy_expanded() # matrix completion
+# [1] 0.2766
+
+
 ## 5.3 Plot results ##################
 
 # Heatmaps
-
-generate_heatmap <- function(cfm){
+generate_heatmap <- function(cfm, title){
 	# Generates heatmap from caret::confusionMatrix object
-	
 	# Grab table & convert to proportion
 	cfm_prop <- apply(cfm$table, 2, function(x){x/sum(x)})
 	# Melt to long form
@@ -263,16 +313,17 @@ generate_heatmap <- function(cfm){
 			colours = colorRampPalette(brewer.pal(6, "YlOrRd"))(6), 
 			limits = c(0, .4),
 			na.value = "#FFFFB2") +
+		ggtitle(title) +
 		theme_classic()
 }
 
 png("figures/Figure_C.png")
 grid.arrange(
-	cfm5 %>% generate_heatmap(),
-	cfm1 %>% generate_heatmap(),
-	cfm2 %>% generate_heatmap(),
-	cfm3 %>% generate_heatmap(),
-	cfm4 %>% generate_heatmap(),
+	cfm5 %>% generate_heatmap("SVT (debiased)"),
+	cfm1 %>% generate_heatmap("Random"),
+	cfm2 %>% generate_heatmap("Average (movie)"),
+	cfm3 %>% generate_heatmap("Emp random (movie)"),
+	cfm4 %>% generate_heatmap("Emp random"),
 	nrow=3, ncol=2)
 dev.off()
 
@@ -306,7 +357,7 @@ levels(ggdata$Var1) <- c(
 	"Random",
 	"Emp random",
 	"Emp random (movie)",
-	"Average")
+	"Average (movie)")
 levels(ggdata$Var2) <- gsub("Class: ", "", levels(ggdata$Var2))
 
 # Plot and save
@@ -315,7 +366,7 @@ ggplot(data=ggdata,
 	geom_bar(stat="identity", color="black") +
 	scale_fill_gradient(low = "white", high="red") +
 	facet_grid(Var1 ~ .) +
-	theme_classic() +
+	theme_minimal() +
 	xlab("Movie rating") +
 	ylab("Sensitivity") +
 ggsave("figures/Figure_D.png", width = 7, height = 8)
